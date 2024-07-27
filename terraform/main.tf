@@ -14,23 +14,19 @@
  * limitations under the License.
  */
 
-
 variable "project_id" {
   type = string
 }
 
 variable "region" {
-  description = "Location for load balancer and Cloud Run resources"
-  default     = "us-central1"
+  default     = "asia-northeast1"
 }
 
-variable "domain" {
-  description = "Domain name to run the load balancer on."
+variable "fqdn" {
   type        = string
 }
 
 variable "lb_name" {
-  description = "Name for load balancer and associated resources"
   default     = "iap-lb"
 }
 
@@ -44,20 +40,24 @@ variable "iap_client_secret" {
   sensitive = true
 }
 
+variable "iap_user" {
+    type = string
+}
+
 provider "google" {
   project = var.project_id
 }
 
 resource "google_vpc_access_connector" "connector" {
-  name          = "example-vpc-connector"
+  name          = "vpc-connector"
   region        = var.region
   project       = var.project_id
-  ip_cidr_range = "10.8.0.0/28"
+  ip_cidr_range = "10.128.128.0/28"
   network       = "default"
 }
 
 resource "google_cloud_run_service" "default" {
-  name     = "example"
+  name     = "chatapp"
   location = var.region
   project  = var.project_id
 
@@ -98,7 +98,7 @@ module "lb-http" {
   name    = var.lb_name
 
   ssl                             = true
-  managed_ssl_certificate_domains = [var.domain]
+  managed_ssl_certificate_domains = [var.fqdn]
   https_redirect                  = true
 
   backends = {
@@ -130,9 +130,9 @@ data "google_iam_policy" "iap" {
   binding {
     role = "roles/iap.httpsResourceAccessor"
     members = [
-      "group:everyone@google.com", // a google group
+      // "group:everyone@google.com", // a google group
       // "allAuthenticatedUsers"          // anyone with a Google account (not recommended)
-      // "user:ahmetalpbalkan@gmail.com", // a particular user
+      "user:${var.iap_user}"
     ]
   }
 }
