@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "claude-app"
+version = "0.1.0"
+description = ""
+authors = ["shin5ok <shin5ok@55mp.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+anthropic = {extras = ["vertex"], version = "^0.31.2"}
+chainlit = "^1.1.306"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
