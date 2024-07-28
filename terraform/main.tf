@@ -14,6 +14,16 @@
  * limitations under the License.
  */
 
+
+terraform {
+  required_providers {
+    google = {
+      source  = "hashicorp/google"
+      version = "~> 5.38.0"
+    }
+  }
+}
+
 variable "project_id" {
   type = string
 }
@@ -48,12 +58,44 @@ provider "google" {
   project = var.project_id
 }
 
+locals {
+  enable_services = toset([
+    "cloudresourcemanager.googleapis.com",
+    "compute.googleapis.com",
+    "run.googleapis.com",
+    "secretmanager.googleapis.com",
+    "vpcaccess.googleapis.com",
+    "certificatemanager.googleapis.com",
+    "artifactregistry.googleapis.com",
+  ])
+}
+
+resource "google_project_service" "compute_service" {
+  service = "compute.googleapis.com"
+  disable_dependent_services = true
+}
+
+resource "google_project_service" "service" {
+  for_each = local.enable_services
+  project  = var.project_id
+  service  = each.value
+  timeouts {
+    create = "60m"
+    update = "120m"
+  }
+  depends_on = [
+    google_project_service.compute_service
+  ]
+  // disable_dependent_services = true
+}
+
 resource "google_vpc_access_connector" "connector" {
   name          = "vpc-connector"
   region        = var.region
   project       = var.project_id
   ip_cidr_range = "10.128.128.0/28"
   network       = "default"
+  depends_on = [ google_project_service.service ]
 }
 
 resource "google_cloud_run_service" "default" {
@@ -92,13 +134,12 @@ resource "google_compute_region_network_endpoint_group" "serverless_neg" {
 
 module "lb-http" {
   source  = "GoogleCloudPlatform/lb-http/google//modules/serverless_negs"
-  version = "5.1.0"
 
   project = var.project_id
   name    = var.lb_name
 
   ssl                             = true
-  managed_ssl_certificate_domains = [var.fqdn]
+  managed_ssl_certificate_domains = ["${var.fqdn}"]
   https_redirect                  = true
 
   backends = {
@@ -124,6 +165,7 @@ module "lb-http" {
       }
     }
   }
+  depends_on = [ google_project_service.compute_service ]
 }
 
 data "google_iam_policy" "iap" {
