@@ -5,6 +5,7 @@ from pprint import pprint as pp
 from base64 import b64encode
 from operator import itemgetter
 
+from google.cloud import storage
 from PIL import Image
 import chainlit as cl
 from chainlit.input_widget import Select, Slider
@@ -18,36 +19,27 @@ from langchain_google_vertexai.model_garden import ChatAnthropicVertex
 from langchain_google_vertexai import ChatVertexAI
 
 PROJECT_ID = os.environ.get("GOOGLE_CLOUD_PROJECT")
-LOCATION = "europe-west1"
+BUCKET_NAME = os.environ.get("BUCKET_NAME")
+LOCATION = os.environ.get("LOCATION", "europe-west1")
 
+# 設定
 default_model = "Gemini-1.5-Flash"
-
 models = {
     "Gemini-1.5-Flash": {
         "model":"gemini-1.5-flash-001",
         "description": "Gemini 1.5 Flash",
         "icon": "https://picsum.photos/300",
+        "class": ChatVertexAI,
+        "gemini": True,
     },
     "Claude-3.5-sonnet": {
         "model": "claude-3-5-sonnet@20240620",
         "description": "Claude 3.5 Sonnet",
         "icon": "https://picsum.photos/390",
+        "class": ChatAnthropicVertex,
+        "gemini": False,
     },
 }
-
-@cl.set_chat_profiles
-async def chat_profile():
-    profiles = []
-    for key, value in models.items():
-        profiles.append(
-            cl.ChatProfile(
-                name=key,
-                markdown_description=value["description"],
-                icon=value["icon"],
-            )
-        )
-    pp(profiles)
-    return profiles
 
 @cl.on_chat_start
 async def main():
@@ -61,14 +53,14 @@ async def main():
             ),
             Slider(
                 id="MAX_TOKEN_SIZE",
-                label="Max Token Size",
+                label="Max token size",
                 initial=1024,
                 min=1024,
                 max=0,
                 step=512,
             ),
             Slider(
-                id="Temperature",
+                id="TEMPARATURE",
                 label="Temperature",
                 initial=0.6,
                 min=0,
@@ -88,29 +80,19 @@ async def setup_runnable(settings):
 
     memory = cl.user_session.get("memory")
 
-    chat_profile = cl.user_session.get("chat_profile")
 
-    pp(settings)
-    pp(chat_profile)
+    selected_model = settings["Model"]
+    cl.user_session.set("model", selected_model)
 
-    if settings["Model"] != default_model and chat_profile != default_model:
+    class_name = models[selected_model]["class"]
 
-        llm = ChatVertexAI(
-            model_name=models["Gemini-1.5-Flash"]["model"],
-            project=PROJECT_ID,
-            location=LOCATION,
-            temperature=settings["Temperature"],
-            max_output_tokens=settings["MAX_TOKEN_SIZE"],
-        )
-    else:
-
-        llm = ChatAnthropicVertex(
-            model_name=models["Claude-3.5-sonnet"]["model"],
-            project=PROJECT_ID,
-            location=LOCATION,
-            temperature=settings["Temperature"],
-            max_output_tokens=settings["MAX_TOKEN_SIZE"],
-        )
+    llm = class_name(
+        model_name=models[selected_model]["model"],
+        project=PROJECT_ID,
+        location=LOCATION,
+        temperature=settings["TEMPARATURE"],
+        max_output_tokens=settings["MAX_TOKEN_SIZE"],
+    )
 
     prompt = ChatPromptTemplate.from_messages(
         [
@@ -127,10 +109,22 @@ async def setup_runnable(settings):
     )
     cl.user_session.set("runnable", runnable)
 
-def encode_image_to_base64(image, image_format):
+def encode_image_to_base64(image, format):
     buffer = io.BytesIO()
-    image.save(buffer, format=image_format)
+    image.save(buffer, format=format)
     return b64encode(buffer.getvalue()).decode("utf-8")
+
+def upload_image_to_gcs(bucket_name, source_file_name):
+
+    import uuid
+    destination_blob_name = f"{uuid.uuid4()}-{os.path.basename(source_file_name)}"
+
+    storage_client = storage.Client()
+    bucket = storage_client.bucket(bucket_name)
+    blob = bucket.blob(destination_blob_name)
+
+    blob.upload_from_filename(source_file_name)
+    return f"gs://{bucket_name}/{destination_blob_name}"
 
 @cl.on_message
 async def on_message(message: cl.Message):
@@ -139,21 +133,33 @@ async def on_message(message: cl.Message):
 
     content = []
 
-    for file in (message.elements or []):
-        if file.path and "image" in file.mime:
-            image = Image.open(file.path)
-            bs64 = encode_image_to_base64(
-                image,
-                file.mime.split('/')[-1].upper()  # Pass the image format
-            )
-            content.append({
-                "type": "image",
-                "source": {
-                    "type": "base64",
-                    "media_type": file.mime,
-                    "data": bs64
+    model_name = cl.user_session.get("model")
+
+    for file in message.elements:
+        if file.path and "image/" in file.mime:
+            if model_name != "Gemini-1.5-Flash":
+                image = Image.open(file.path)
+                encoded = encode_image_to_base64(
+                    image,
+                    file.mime.split('/')[-1].upper()
+                )
+                content.append({
+                    "type": "image",
+                    "source": {
+                        "type": "base64",
+                        "media_type": file.mime,
+                        "data": encoded,
+                    }
+                })
+            else:
+                destination_path = upload_image_to_gcs(BUCKET_NAME, file.path)
+                media_message = {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": destination_path,
+                    }
                 }
-            })
+                content.append(media_message)
 
     content_text = {"type": "text", "text": message.content}
     content.append(content_text)

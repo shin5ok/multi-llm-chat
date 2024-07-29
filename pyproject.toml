@@ -10,7 +10,7 @@ python = "^3.12"
 anthropic = {extras = ["vertex"], version = "^0.31.2"}
 chainlit = "^1.1.306"
 langchain = "^0.2.11"
-langchain-google-vertexai = "^1.0.7"
+langchain-google-vertexai = "1.0.5"
 pillow = "^10.4.0"
 
 

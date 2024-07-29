@@ -1368,22 +1368,22 @@ tenacity = ">=8.1.0,<8.4.0 || >8.4.0,<9.0.0"
 
 [[package]]
 name = "langchain-google-vertexai"
-version = "1.0.7"
+version = "1.0.5"
 description = "An integration package connecting Google VertexAI and LangChain"
 optional = false
 python-versions = "<4.0,>=3.8.1"
 files = [
-    {file = "langchain_google_vertexai-1.0.7-py3-none-any.whl", hash = "sha256:2c3516171fb0a6557ff03d073bdbf6e9bbb5f291cccbcd8febd97affa2e69574"},
-    {file = "langchain_google_vertexai-1.0.7.tar.gz", hash = "sha256:ac7d8ad8e832b1d5a752cb0637082d7e2c451bc33e512eec7bf9662b1aac41db"},
+    {file = "langchain_google_vertexai-1.0.5-py3-none-any.whl", hash = "sha256:38f4a39bf35927d744d0883907c4d4a59eef059e9b36f28bb5c737c2aae6963b"},
+    {file = "langchain_google_vertexai-1.0.5.tar.gz", hash = "sha256:50005dc12ff9d66bbbab9e1ab660574b1584eee3e7b5a647dc8a009a94f0c500"},
 ]
 
 [package.dependencies]
-google-cloud-aiplatform = ">=1.56.0,<2.0.0"
-google-cloud-storage = ">=2.17.0,<3.0.0"
-langchain-core = ">=0.2.17,<0.3"
+google-cloud-aiplatform = ">=1.47.0,<2.0.0"
+google-cloud-storage = ">=2.14.0,<3.0.0"
+langchain-core = ">=0.2.2,<0.3"
 
 [package.extras]
-anthropic = ["anthropic[vertexai] (>=0.30.0,<1)"]
+anthropic = ["anthropic[vertexai] (>=0.23.0,<1)"]
 
 [[package]]
 name = "langchain-text-splitters"
@@ -3034,4 +3034,4 @@ test = ["big-O", "importlib-resources", "jaraco.functools", "jaraco.itertools", 
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "22cc9875a44c07072bee49fcd65af3df1d410b1cb31501eb7fd0a07636d61a52"
+content-hash = "bc9ff2cc2cea0ceb491ebb58454a3940d08f05e498889315c3e43c92bcdea40d"
