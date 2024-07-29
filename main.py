@@ -56,7 +56,7 @@ async def main():
                 label="Max token size",
                 initial=1024,
                 min=1024,
-                max=0,
+                max=8192,
                 step=512,
             ),
             Slider(
