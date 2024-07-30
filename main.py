@@ -86,14 +86,11 @@ async def setup_runnable(settings):
     memory = cl.user_session.get("memory")
 
     profile = cl.user_session.get("chat_profile")
-    print(profile)
-    selected_model = profile
-    # cl.user_session.set("model", selected_model)
 
     class_name = models[profile]["class"]
 
     llm = class_name(
-        model_name=models[selected_model]["model"],
+        model_name=models[profile]["model"],
         project=PROJECT_ID,
         location=LOCATION,
         temperature=settings["TEMPARATURE"],
@@ -115,7 +112,7 @@ async def setup_runnable(settings):
     )
     cl.user_session.set("runnable", runnable)
 
-def encode_image_to_base64(image, format):
+def make_image_base64encoding(image, format):
     buffer = io.BytesIO()
     image.save(buffer, format=format)
     return b64encode(buffer.getvalue()).decode("utf-8")
@@ -145,7 +142,7 @@ async def on_message(message: cl.Message):
         if file.path and "image/" in file.mime:
             if model_name != "Gemini-1.5-Flash":
                 image = Image.open(file.path)
-                encoded = encode_image_to_base64(
+                encoded = make_image_base64encoding(
                     image,
                     file.mime.split('/')[-1].upper()
                 )

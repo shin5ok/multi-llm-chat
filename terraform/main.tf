@@ -86,7 +86,7 @@ resource "google_project_service" "service" {
   depends_on = [
     google_project_service.compute_service
   ]
-  // disable_dependent_services = true
+  disable_dependent_services = true
 }
 
 resource "google_vpc_access_connector" "connector" {
@@ -98,7 +98,7 @@ resource "google_vpc_access_connector" "connector" {
   depends_on = [ google_project_service.service ]
 }
 
-resource "google_cloud_run_service" "default" {
+resource "google_cloud_run_service" "chatapp" {
   name     = "chatapp"
   location = var.region
   project  = var.project_id
@@ -128,7 +128,7 @@ resource "google_compute_region_network_endpoint_group" "serverless_neg" {
   network_endpoint_type = "SERVERLESS"
   region                = var.region
   cloud_run {
-    service = google_cloud_run_service.default.name
+    service = google_cloud_run_service.chatapp.name
   }
 }
 
