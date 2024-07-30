@@ -49,7 +49,7 @@ async def main():
                 id="Model",
                 label="Vertex AI - Model",
                 values= models.keys(),
-                initial_index=0,
+                initial_index=1,
             ),
             Slider(
                 id="MAX_TOKEN_SIZE",
