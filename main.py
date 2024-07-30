@@ -25,36 +25,41 @@ LOCATION = os.environ.get("LOCATION", "europe-west1")
 # 設定
 default_model = "Gemini-1.5-Flash"
 models = {
-    "Gemini-1.5-Flash": {
-        "model":"gemini-1.5-flash-001",
-        "description": "Gemini 1.5 Flash",
-        "icon": "https://picsum.photos/300",
-        "class": ChatVertexAI,
-        "gemini": True,
-    },
     "Claude-3.5-sonnet": {
         "model": "claude-3-5-sonnet@20240620",
         "description": "Claude 3.5 Sonnet",
         "icon": "https://picsum.photos/390",
         "class": ChatAnthropicVertex,
-        "gemini": False,
+    },
+    "Gemini-1.5-Flash": {
+        "model":"gemini-1.5-flash-001",
+        "description": "Gemini 1.5 Flash",
+        "icon": "https://picsum.photos/300",
+        "class": ChatVertexAI,
     },
 }
+
+@cl.set_chat_profiles
+async def chat_profile():
+    profiles = []
+    for profile in models:
+        profiles.append(
+            cl.ChatProfile(
+                name=profile,
+                markdown_description=models[profile]["description"],
+                icon=models[profile]["icon"],
+            )
+        )
+    return profiles
 
 @cl.on_chat_start
 async def main():
     settings = await cl.ChatSettings(
         [
-            Select(
-                id="Model",
-                label="Vertex AI - Model",
-                values= models.keys(),
-                initial_index=1,
-            ),
             Slider(
                 id="MAX_TOKEN_SIZE",
                 label="Max token size",
-                initial=1024,
+                initial=4096,
                 min=1024,
                 max=8192,
                 step=512,
@@ -80,11 +85,12 @@ async def setup_runnable(settings):
 
     memory = cl.user_session.get("memory")
 
+    profile = cl.user_session.get("chat_profile")
+    print(profile)
+    selected_model = profile
+    # cl.user_session.set("model", selected_model)
 
-    selected_model = settings["Model"]
-    cl.user_session.set("model", selected_model)
-
-    class_name = models[selected_model]["class"]
+    class_name = models[profile]["class"]
 
     llm = class_name(
         model_name=models[selected_model]["model"],
