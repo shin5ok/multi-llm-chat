@@ -79,13 +79,11 @@ async def main():
 @cl.on_settings_update
 async def setup_runnable(settings):
 
+    profile = cl.user_session.get("chat_profile")
+
     cl.user_session.set(
         "memory", ConversationBufferMemory(return_messages=True)
     )
-
-    memory = cl.user_session.get("memory")
-
-    profile = cl.user_session.get("chat_profile")
 
     class_name = models[profile]["class"]
 
@@ -97,6 +95,7 @@ async def setup_runnable(settings):
         max_output_tokens=settings["MAX_TOKEN_SIZE"],
     )
 
+    memory = cl.user_session.get("memory")
     prompt = ChatPromptTemplate.from_messages(
         [
             ("system", "You are the smartest chat bot"),
@@ -105,12 +104,12 @@ async def setup_runnable(settings):
         ]
     )
 
-    runnable = (
+    chain = (
         RunnablePassthrough.assign(
             history=RunnableLambda(memory.load_memory_variables) | itemgetter("history")
         ) | prompt | llm | StrOutputParser()
     )
-    cl.user_session.set("runnable", runnable)
+    cl.user_session.set("chain", chain)
 
 def make_image_base64encoding(image, format):
     buffer = io.BytesIO()
@@ -132,15 +131,16 @@ def upload_image_to_gcs(bucket_name, source_file_name):
 @cl.on_message
 async def on_message(message: cl.Message):
     memory = cl.user_session.get("memory")
-    runnable = cl.user_session.get("runnable")
+    chain = cl.user_session.get("chain")
 
     content = []
 
-    model_name = cl.user_session.get("model")
+    profile = cl.user_session.get("chat_profile")
 
     for file in message.elements:
         if file.path and "image/" in file.mime:
-            if model_name != "Gemini-1.5-Flash":
+            print("model_name", profile)
+            if profile != "Gemini-1.5-Flash":
                 image = Image.open(file.path)
                 encoded = make_image_base64encoding(
                     image,
@@ -170,7 +170,7 @@ async def on_message(message: cl.Message):
 
     res = cl.Message(content="", author=f'Chatbot: Claude-3.5-sonnet')
 
-    async for chunk in runnable.astream(
+    async for chunk in chain.astream(
         runnable_message_data,
         config=RunnableConfig(callbacks=[cl.LangchainCallbackHandler()]),
     ):
