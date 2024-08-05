@@ -162,6 +162,7 @@ async def on_message(message: cl.Message):
                         "url": destination_path,
                     }
                 }
+                pp(media_message)
                 content.append(media_message)
 
     content_text = {"type": "text", "text": message.content}
