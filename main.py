@@ -25,20 +25,20 @@ LOCATION = os.environ.get("LOCATION", "europe-west1")
 # 設定
 default_model = "Gemini-1.5-Flash"
 models = {
+    "Gemini-1.5-Flash 002": {
+        "model":"gemini-1.5-flash-002",
+        "description": "Gemini 1.5 Flash 002",
+        "icon": "https://picsum.photos/303",
+        "class": ChatVertexAI,
+    },
     "Claude-3.5-sonnet": {
         "model": "claude-3-5-sonnet@20240620",
         "description": "Claude 3.5 Sonnet",
         "icon": "https://picsum.photos/390",
         "class": ChatAnthropicVertex,
     },
-    "Gemini-1.5-Flash 002": {
-        "model":"gemini-1.5-flash-002",
-        "description": "Gemini 1.5 Flash",
-        "icon": "https://picsum.photos/303",
-        "class": ChatVertexAI,
-    },
     "Gemini-1.5-Flash 001": {
-        "model":"gemini-1.5-flash-001",
+        "model":"gemini-1.5-flash-001 001",
         "description": "Gemini 1.5 Flash",
         "icon": "https://picsum.photos/300",
         "class": ChatVertexAI,
