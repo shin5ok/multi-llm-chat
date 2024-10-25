@@ -1,5 +1,5 @@
-import io
-import os
+import io, os
+import re
 from pprint import pprint as pp
 
 from base64 import b64encode
@@ -74,8 +74,8 @@ async def main():
                 id="TEMPARATURE",
                 label="Temperature",
                 initial=0.6,
-                min=0,
-                max=1,
+                min=0.0,
+                max=1.0,
                 step=0.1,
             ),
         ]
@@ -126,6 +126,7 @@ def upload_image_to_gcs(bucket_name, source_file_name):
 
     import uuid
     destination_blob_name = f"{uuid.uuid4()}-{os.path.basename(source_file_name)}"
+    print(f"Uploading {source_file_name} to {destination_blob_name}")
 
     storage_client = storage.Client()
     bucket = storage_client.bucket(bucket_name)
@@ -142,11 +143,13 @@ async def on_message(message: cl.Message):
     content = []
 
     profile = cl.user_session.get("chat_profile")
+    pp(message.elements)
 
+    regex = re.compile("gemini", re.IGNORECASE)
     for file in message.elements:
         if file.path and "image/" in file.mime:
             print("model_name", profile)
-            if profile != "Gemini-1.5-Flash":
+            if not re.search(regex,profile):
                 image = Image.open(file.path)
                 encoded = make_image_base64encoding(
                     image,

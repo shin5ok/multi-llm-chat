@@ -6,10 +6,12 @@ deploy:
 	gcloud run deploy $(SERVICE_NAME) \
 	--source=. \
 	--region=asia-northeast1 \
-	--cpu=1 --memory=1 \
+	--cpu=1 \
+	--memory=1G \
 	--cpu-boost \
 	--session-affinity \
 	--ingress=internal-and-cloud-load-balancing \
 	--set-env-vars=BUCKET_NAME=$(BUCKET_NAME) \
+	--concurrency=16 \
 	--min-instances=1
 
