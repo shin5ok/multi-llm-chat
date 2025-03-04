@@ -9,16 +9,16 @@ models = {
         "icon": "https://picsum.photos/390",
         "class": ChatAnthropicVertex,
     },
+    "Gemini-2.0-Flash 002": {
+        "model":"gemini-2.0-flash-001",
+        "description": "Gemini 2.0 Flash 001",
+        "icon": "https://picsum.photos/300",
+        "class": ChatVertexAI,
+    },
     "Gemini-1.5-Flash 002": {
         "model":"gemini-1.5-flash-002",
         "description": "Gemini 1.5 Flash 002",
         "icon": "https://picsum.photos/303",
-        "class": ChatVertexAI,
-    },
-    "Gemini-1.5-Flash 001": {
-        "model":"gemini-1.5-flash-001 001",
-        "description": "Gemini 1.5 Flash",
-        "icon": "https://picsum.photos/300",
         "class": ChatVertexAI,
     },
 }
