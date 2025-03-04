@@ -15,35 +15,17 @@ from langchain.schema import StrOutputParser
 from langchain.schema.runnable import RunnablePassthrough, RunnableLambda
 from langchain.schema.runnable.config import RunnableConfig
 from langchain_core.messages import HumanMessage
-from langchain_google_vertexai.model_garden import ChatAnthropicVertex
-from langchain_google_vertexai import ChatVertexAI
+
+import models_config
+
+# 環境変数
 
 PROJECT_ID = os.environ.get("GOOGLE_CLOUD_PROJECT")
 BUCKET_NAME = os.environ.get("BUCKET_NAME")
 LOCATION = os.environ.get("LOCATION", "europe-west1")
 
 # 設定
-default_model = "Gemini-1.5-Flash"
-models = {
-    "Gemini-1.5-Flash 002": {
-        "model":"gemini-1.5-flash-002",
-        "description": "Gemini 1.5 Flash 002",
-        "icon": "https://picsum.photos/303",
-        "class": ChatVertexAI,
-    },
-    "Claude-3.5-sonnet": {
-        "model": "claude-3-5-sonnet@20240620",
-        "description": "Claude 3.5 Sonnet",
-        "icon": "https://picsum.photos/390",
-        "class": ChatAnthropicVertex,
-    },
-    "Gemini-1.5-Flash 001": {
-        "model":"gemini-1.5-flash-001 001",
-        "description": "Gemini 1.5 Flash",
-        "icon": "https://picsum.photos/300",
-        "class": ChatVertexAI,
-    },
-}
+models = models_config.models
 
 @cl.set_chat_profiles
 async def chat_profile():
