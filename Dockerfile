@@ -1,9 +1,9 @@
 FROM python:3.12.3-slim
 
-COPY main.py poetry.lock pyproject.toml ./
+COPY *.py poetry.lock pyproject.toml README.md ./
 RUN pip install --no-cache-dir poetry \
   && poetry config virtualenvs.in-project true
-RUN poetry install
+RUN poetry install --no-root
 
 # USER nobody
 ENV PYTHONUNBUFFERED=on
