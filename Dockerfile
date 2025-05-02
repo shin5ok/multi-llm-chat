@@ -17,7 +17,7 @@ RUN pip install --no-cache-dir poetry \
     && pip install --no-cache-dir uv \
     && uv pip install --system -r requirements.txt
 
-USER nobody
+# USER nobody
 ENV PYTHONUNBUFFERED=on
 
 CMD ["chainlit", "run", "main.py", "--port=8080", "--host=0.0.0.0", "--headless"]
