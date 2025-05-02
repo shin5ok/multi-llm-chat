@@ -1,7 +1,7 @@
 import io, os
 import re
 from pprint import pprint as pp
-from typing import Any, Dict, List, Optional, Union
+from typing import Dict, Any, Optional
 
 from base64 import b64encode
 from operator import itemgetter
@@ -10,49 +10,24 @@ from google.cloud import storage
 from PIL import Image
 import chainlit as cl
 from chainlit.input_widget import Select, Slider
-from chainlit.types import ChatProfile
-from chainlit.user import User
-from langchain_core.chat_history import BaseChatMessageHistory
-from langchain_core.messages import AIMessage, HumanMessage, BaseMessage
+from langchain.memory import ConversationBufferMemory
 from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain.schema import StrOutputParser
 from langchain.schema.runnable import RunnablePassthrough, RunnableLambda
 from langchain.schema.runnable.config import RunnableConfig
+from langchain_core.messages import HumanMessage
 
 import models_config
 
 # 環境変数
 PROJECT_ID = os.environ.get("GOOGLE_CLOUD_PROJECT")
-BUCKET_NAME = os.environ.get("BUCKET_NAME")
-LOCATION = os.environ.get("LOCATION", "europe-west1")
+BUCKET_NAME = os.environ.get("BUCKET_NAME", "default-bucket")  # デフォルト値を設定
 
 # 設定
-models = models_config.models
-
-class ChainlitChatMessageHistory(BaseChatMessageHistory):
-    def __init__(self) -> None:
-        self.messages: List[BaseMessage] = []
-
-    def add_message(self, message: BaseMessage) -> None:
-        self.messages.append(message)
-
-    def add_user_message(self, message: Union[HumanMessage, str]) -> None:
-        if isinstance(message, str):
-            self.add_message(HumanMessage(content=message))
-        else:
-            self.add_message(message)
-
-    def add_ai_message(self, message: Union[AIMessage, str]) -> None:
-        if isinstance(message, str):
-            self.add_message(AIMessage(content=message))
-        else:
-            self.add_message(message)
-
-    def clear(self) -> None:
-        self.messages = []
+models: Dict[str, Dict[str, Any]] = models_config.models
 
 @cl.set_chat_profiles
-async def chat_profile(user: Optional[User] = None) -> List[ChatProfile]:
+async def chat_profile(user: Optional[cl.User] = None) -> list[cl.ChatProfile]:
     profiles = []
     for profile in models:
         profiles.append(
@@ -65,7 +40,7 @@ async def chat_profile(user: Optional[User] = None) -> List[ChatProfile]:
     return profiles
 
 @cl.on_chat_start
-async def main() -> None:
+async def main():
     settings = await cl.ChatSettings(
         [
             Slider(
@@ -89,33 +64,31 @@ async def main() -> None:
     await setup_runnable(settings)
 
 @cl.on_settings_update
-async def setup_runnable(settings: Dict[str, Any]) -> None:
+async def setup_runnable(settings):
     profile = cl.user_session.get("chat_profile")
-    if not profile:
-        return
+    if not profile or profile not in models:
+        # プロファイルが見つからない場合は、最初のモデルを使用
+        profile = next(iter(models))
+        cl.user_session.set("chat_profile", profile)
 
-    memory = ChainlitChatMessageHistory()
-    cl.user_session.set("memory", memory)
+    cl.user_session.set(
+        "memory", ConversationBufferMemory(return_messages=True)
+    )
 
     class_name = models[profile]["class"]
+    region = models[profile]["region"]
 
-    # モデルの初期化パラメータを設定
-    model_params = {
-        "model_name": models[profile]["model"],
-        "project": PROJECT_ID,
-        "location": LOCATION,
-        "temperature": settings["TEMPARATURE"],
-        "max_output_tokens": settings["MAX_TOKEN_SIZE"],
-    }
+    llm = class_name(
+        model_name=models[profile]["model"],
+        project=PROJECT_ID,
+        location=region,
+        temperature=settings["TEMPARATURE"],
+        max_output_tokens=settings["MAX_TOKEN_SIZE"],
+    )
 
-    # ChatAnthropicVertexの場合は追加のパラメータを設定
-    if class_name.__name__ == "ChatAnthropicVertex":
-        model_params.update({
-            "region": LOCATION,
-            "project_id": PROJECT_ID,
-        })
-
-    llm = class_name(**model_params)
+    memory = cl.user_session.get("memory")
+    if not memory:
+        raise ValueError("Memory not initialized")
 
     prompt = ChatPromptTemplate.from_messages(
         [
@@ -127,18 +100,17 @@ async def setup_runnable(settings: Dict[str, Any]) -> None:
 
     chain = (
         RunnablePassthrough.assign(
-            history=lambda x: memory.messages
+            history=RunnableLambda(memory.load_memory_variables) | itemgetter("history")
         ) | prompt | llm | StrOutputParser()
     )
     cl.user_session.set("chain", chain)
 
-def make_image_base64encoding(image, format):
+def make_image_base64encoding(image: Image.Image, format: str) -> str:
     buffer = io.BytesIO()
     image.save(buffer, format=format)
     return b64encode(buffer.getvalue()).decode("utf-8")
 
-def upload_image_to_gcs(bucket_name, source_file_name):
-
+def upload_image_to_gcs(bucket_name: str, source_file_name: str) -> str:
     import uuid
     destination_blob_name = f"{uuid.uuid4()}-{os.path.basename(source_file_name)}"
     print(f"Uploading {source_file_name} to {destination_blob_name}")
@@ -151,25 +123,22 @@ def upload_image_to_gcs(bucket_name, source_file_name):
     return f"gs://{bucket_name}/{destination_blob_name}"
 
 @cl.on_message
-async def on_message(message: cl.Message) -> None:
+async def on_message(message: cl.Message):
     memory = cl.user_session.get("memory")
     chain = cl.user_session.get("chain")
-    if not memory or not chain:
-        return
+    profile = cl.user_session.get("chat_profile")
+
+    if not memory or not chain or not profile:
+        raise ValueError("Session not properly initialized")
 
     content = []
-
-    profile = cl.user_session.get("chat_profile")
-    if not profile:
-        return
-
     pp(message.elements)
 
     regex = re.compile("gemini", re.IGNORECASE)
     for file in message.elements:
         if file.path and file.mime and "image/" in file.mime:
             print("model_name", profile)
-            if not re.search(regex,profile):
+            if not re.search(regex, str(profile)):
                 image = Image.open(file.path)
                 encoded = make_image_base64encoding(
                     image,
@@ -198,7 +167,7 @@ async def on_message(message: cl.Message) -> None:
     content.append(content_text)
     runnable_message_data = {"human_message": [HumanMessage(content=content)]}
 
-    res = cl.Message(content="", author=f'Chatbot: Claude-3.5-sonnet')
+    res = cl.Message(content="", author=f'Chatbot: {profile}')
 
     async for chunk in chain.astream(
         runnable_message_data,
@@ -207,5 +176,5 @@ async def on_message(message: cl.Message) -> None:
         await res.stream_token(chunk)
 
     await res.send()
-    memory.add_user_message(message.content)
-    memory.add_ai_message(res.content)
+    memory.chat_memory.add_user_message(message.content)
+    memory.chat_memory.add_ai_message(res.content)
