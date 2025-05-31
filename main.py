@@ -67,8 +67,8 @@ async def main():
 async def setup_runnable(settings):
     profile = cl.user_session.get("chat_profile")
     if not profile or profile not in models:
-        # プロファイルが見つからない場合は、最初のモデルを使用
-        profile = next(iter(models))
+        # プロファイルが見つからない場合は、Claudeをデフォルトに使用
+        profile = "Claude-4-sonnet"
         cl.user_session.set("chat_profile", profile)
 
     cl.user_session.set(
