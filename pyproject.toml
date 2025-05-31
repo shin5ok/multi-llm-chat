@@ -1,21 +1,23 @@
-[tool.poetry]
+[project]
 name = "claude-app"
 version = "0.1.0"
 description = ""
-authors = ["shin5ok <shin5ok@55mp.com>"]
+authors = [{name = "shin5ok", email = "shin5ok@55mp.com"}]
 readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "anthropic>=0.37.1",
+    "chainlit>=1.3.0",
+    "langchain>=0.3.4",
+    "langchain-google-vertexai>=2.0.5",
+    "pillow>=10.4.0",
+    "langchain-core>=0.3.12",
+    "httpx==0.27.2",
+]
 
-[tool.poetry.dependencies]
-python = "^3.12"
-anthropic = "^0.37.1"
-chainlit = "^1.3.0"
-langchain = "^0.3.4"
-langchain-google-vertexai = "^2.0.5"
-pillow = "^10.4.0"
-langchain-core = "^0.3.12"
-httpx = "0.27.2"
-
+[tool.hatch.build.targets.wheel]
+packages = ["."]
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
